@@ -19,8 +19,11 @@ rl.on('line', async (line) => {
 
   if (trimmed === 'pr' || trimmed.startsWith('pr ')) {
     rl.pause()
-    const url = trimmed === 'pr' ? null : trimmed.slice(3).trim()
-    await handlePr(rl, url)
+    const caveman = /--caveman|--cm/.test(trimmed)
+    const url = trimmed === 'pr' || /^pr\s*(--caveman|--cm)\s*$/.test(trimmed)
+      ? null
+      : trimmed.replace(/--caveman|--cm/g, '').replace(/^pr\s*/, '').trim() || null
+    await handlePr(rl, url, caveman)
     rl.prompt()
     rl.resume()
     return
