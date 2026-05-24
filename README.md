@@ -6,8 +6,8 @@ Simple agent to review pull requests.
 
 ### MVP 
 
-- [ ] cli input for user to give the pull request link 
-- [ ] agent fetches the diff 
+- [x] cli input for user to give the pull request link 
+- [x] agent fetches the diff 
 - [ ] agent reviews the code 
 
 ### Extra 

@@ -4,6 +4,17 @@
   "description": "Code review agent",
   "type": "module",
   "bin": {
-    "samikshak": "./bin/samikshak.js"
-  }
+    "samikshak": "bin/samikshak.js"
+  },
+  "dependencies": {
+    "picocolors": "^1.1.1"
+  },
+  "main": "index.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }
