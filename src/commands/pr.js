@@ -3,6 +3,7 @@ import { marked } from 'marked'
 import Renderer from 'marked-terminal'
 import { getLLM } from '../llm.js'
 import { SYSTEM_PROMPT, buildReviewPrompt } from '../prompts/review.js'
+import { page } from '../pager.js'
 
 marked.setOptions({ renderer: new Renderer() })
 
@@ -63,31 +64,34 @@ function formatDiff(diff) {
   }).join('\n')
 }
 
-export function displayPr({ meta, files, diff }) {
+export function formatPr({ meta, files, diff }) {
   const separator = '═'.repeat(47)
   const divider = '─'.repeat(47)
+  const lines = []
 
-  console.log(`\n${pc.bold(separator)}`)
-  console.log(` ${pc.bold(`PR #${meta.number}`)} by ${pc.cyan(meta.user.login)} — ${colorState(meta.state)}`)
-  console.log(`${pc.bold(separator)}\n`)
-  console.log(` ${pc.bold(meta.title)}`)
-  console.log(`${divider}`)
-  console.log(` ${meta.body || '(no description)'}`)
-  console.log(`${divider}`)
+  lines.push(`\n${pc.bold(separator)}`)
+  lines.push(` ${pc.bold(`PR #${meta.number}`)} by ${pc.cyan(meta.user.login)} — ${colorState(meta.state)}`)
+  lines.push(`${pc.bold(separator)}\n`)
+  lines.push(` ${pc.bold(meta.title)}`)
+  lines.push(`${divider}`)
+  lines.push(` ${meta.body || '(no description)'}`)
+  lines.push(`${divider}`)
 
   const totalAdditions = files.reduce((s, f) => s + f.additions, 0)
   const totalDeletions = files.reduce((s, f) => s + f.deletions, 0)
-  console.log(` ${pc.bold(files.length)} files changed  (${pc.green(`+${totalAdditions}`)} / ${pc.red(`-${totalDeletions}`)})\n`)
+  lines.push(` ${pc.bold(files.length)} files changed  (${pc.green(`+${totalAdditions}`)} / ${pc.red(`-${totalDeletions}`)})\n`)
 
   for (const f of files) {
-    const statusIcon = f.status === 'added' ? pc.green('+') : f.status === 'removed' ? pc.red('-') : f.status === 'renamed' ? pc.yellow('→') : ' '
-    console.log(`   ${statusIcon} ${pc.yellow(f.filename)}  (${pc.green(`+${f.additions}`)} / ${pc.red(`-${f.deletions}`)})`)
+    const statusIcon = f.status === 'added' ? pc.green('+') : f.status === 'removed' ? pc.red('-') : f.status === 'renamed' ? pc.yellow('\u2192') : ' '
+    lines.push(`   ${statusIcon} ${pc.yellow(f.filename)}  (${pc.green(`+${f.additions}`)} / ${pc.red(`-${f.deletions}`)})`)
   }
 
-  console.log(`\n${divider}`)
-  console.log(` ${pc.bold('DIFF')}`)
-  console.log(`${divider}`)
-  console.log(`\n${formatDiff(diff)}`)
+  lines.push(`\n${divider}`)
+  lines.push(` ${pc.bold('DIFF')}`)
+  lines.push(`${divider}`)
+  lines.push(`\n${formatDiff(diff)}`)
+
+  return lines.join('\n')
 }
 
 export async function handlePr(rl, url) {
@@ -110,12 +114,9 @@ async function reviewWithLLM(meta, diff) {
   return chat.ask(buildReviewPrompt(meta, diff))
 }
 
-function displayReview(review) {
+function formatReview(review) {
   const divider = '═'.repeat(47)
-  console.log(`\n${pc.bold(divider)}`)
-  console.log(` ${pc.bold('AI REVIEW')}`)
-  console.log(`${pc.bold(divider)}\n`)
-  console.log(marked(review.content))
+  return `\n${pc.bold(divider)}\n ${pc.bold('AI REVIEW')}\n${pc.bold(divider)}\n\n${marked(review.content)}`
 }
 
 async function processUrl(url) {
@@ -125,11 +126,13 @@ async function processUrl(url) {
       fetchPrData(owner, repo, number),
       fetchRawDiff(owner, repo, number),
     ])
-    displayPr({ ...data, diff })
+    let output = formatPr({ ...data, diff })
 
     console.log(`\n${pc.dim('Running AI review...')}`)
     const review = await reviewWithLLM(data.meta, diff)
-    displayReview(review)
+    output += `\n${formatReview(review)}`
+
+    await page(output)
   } catch (err) {
     console.error(`\n${pc.red('Error:')} ${err.message}`)
   }
