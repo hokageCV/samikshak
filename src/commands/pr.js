@@ -2,7 +2,7 @@ import pc from 'picocolors'
 import { marked } from 'marked'
 import Renderer from 'marked-terminal'
 import { getLLM } from '../llm.js'
-import { SYSTEM_PROMPT, CAVEMAN_ULTRA_PROMPT, buildReviewPrompt } from '../prompts/review.js'
+import { SYSTEM_PROMPT, COMMIT_SYSTEM_PROMPT, DIFF_SYSTEM_PROMPT, CAVEMAN_ULTRA_PROMPT, buildReviewPrompt } from '../prompts/review.js'
 import { page } from '../pager.js'
 
 marked.setOptions({ renderer: new Renderer() })
@@ -50,7 +50,7 @@ function colorState(state) {
   return fn ? fn(state) : state
 }
 
-function formatDiff(diff) {
+export function formatDiff(diff) {
   return diff.split('\n').map(line => {
     if (line.startsWith('+') && !line.startsWith('+++')) return pc.green(line)
     if (line.startsWith('-') && !line.startsWith('---')) return pc.red(line)
@@ -107,14 +107,19 @@ export async function handlePr(rl, url, caveman) {
   })
 }
 
-async function reviewWithLLM(meta, diff, caveman) {
+export async function reviewWithLLM(meta, diff, caveman, type = 'pr') {
   const llm = getLLM()
   const chat = llm.chat().withTemperature(0.3)
-  chat.system(caveman ? CAVEMAN_ULTRA_PROMPT : SYSTEM_PROMPT)
-  return chat.ask(buildReviewPrompt(meta, diff))
+  const systemPrompt = caveman
+    ? CAVEMAN_ULTRA_PROMPT
+    : type === 'commit' ? COMMIT_SYSTEM_PROMPT
+    : type === 'diff' ? DIFF_SYSTEM_PROMPT
+    : SYSTEM_PROMPT
+  chat.system(systemPrompt)
+  return chat.ask(buildReviewPrompt(meta, diff, type))
 }
 
-function formatReview(review, caveman) {
+export function formatReview(review, caveman) {
   const divider = '═'.repeat(47)
   const footer = caveman ? `\n${pc.dim('Caveman mode — https://skillsllm.com/skill/caveman')}` : ''
   return `\n${pc.bold(divider)}\n ${pc.bold('AI REVIEW')}\n${pc.bold(divider)}\n\n${marked(review.content)}${footer}`

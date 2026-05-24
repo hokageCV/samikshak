@@ -1,5 +1,7 @@
 import * as readline from 'node:readline'
 import { handlePr } from './commands/pr.js'
+import { handleCommit } from './commands/commit.js'
+import { handleDiff } from './commands/diff.js'
 import { handleProvider } from './commands/provider.js'
 
 const rl = readline.createInterface({
@@ -24,6 +26,30 @@ rl.on('line', async (line) => {
       ? null
       : trimmed.replace(/--caveman|--cm/g, '').replace(/^pr\s*/, '').trim() || null
     await handlePr(rl, url, caveman)
+    rl.prompt()
+    rl.resume()
+    return
+  }
+
+  if (trimmed === 'commit' || trimmed.startsWith('commit ')) {
+    rl.pause()
+    const caveman = /--caveman|--cm/.test(trimmed)
+    const ref = trimmed === 'commit' || /^commit\s*(--caveman|--cm)\s*$/.test(trimmed)
+      ? null
+      : trimmed.replace(/--caveman|--cm/g, '').replace(/^commit\s*/, '').trim() || null
+    await handleCommit(rl, ref, caveman)
+    rl.prompt()
+    rl.resume()
+    return
+  }
+
+  if (trimmed === 'diff' || trimmed.startsWith('diff ')) {
+    rl.pause()
+    const caveman = /--caveman|--cm/.test(trimmed)
+    const args = trimmed === 'diff' || /^diff\s*(--caveman|--cm)\s*$/.test(trimmed)
+      ? null
+      : trimmed.replace(/--caveman|--cm/g, '').replace(/^diff\s*/, '').trim() || ''
+    await handleDiff(rl, args, caveman)
     rl.prompt()
     rl.resume()
     return
