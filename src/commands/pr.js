@@ -1,4 +1,10 @@
 import pc from 'picocolors'
+import { marked } from 'marked'
+import Renderer from 'marked-terminal'
+import { getLLM } from '../llm.js'
+import { SYSTEM_PROMPT, buildReviewPrompt } from '../prompts/review.js'
+
+marked.setOptions({ renderer: new Renderer() })
 
 export const PR_URL_RE = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/
 
@@ -97,6 +103,21 @@ export async function handlePr(rl, url) {
   })
 }
 
+async function reviewWithLLM(meta, diff) {
+  const llm = getLLM()
+  const chat = llm.chat().withTemperature(0.3)
+  chat.system(SYSTEM_PROMPT)
+  return chat.ask(buildReviewPrompt(meta, diff))
+}
+
+function displayReview(review) {
+  const divider = '═'.repeat(47)
+  console.log(`\n${pc.bold(divider)}`)
+  console.log(` ${pc.bold('AI REVIEW')}`)
+  console.log(`${pc.bold(divider)}\n`)
+  console.log(marked(review.content))
+}
+
 async function processUrl(url) {
   try {
     const { owner, repo, number } = parsePrUrl(url)
@@ -105,7 +126,11 @@ async function processUrl(url) {
       fetchRawDiff(owner, repo, number),
     ])
     displayPr({ ...data, diff })
+
+    console.log(`\n${pc.dim('Running AI review...')}`)
+    const review = await reviewWithLLM(data.meta, diff)
+    displayReview(review)
   } catch (err) {
-    console.error(`\nError: ${err.message}`)
+    console.error(`\n${pc.red('Error:')} ${err.message}`)
   }
 }
