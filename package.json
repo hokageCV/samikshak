@@ -1,0 +1,9 @@
+{
+  "name": "samikshak",
+  "version": "0.1.0",
+  "description": "Code review agent",
+  "type": "module",
+  "bin": {
+    "samikshak": "./bin/samikshak.js"
+  }
+}
