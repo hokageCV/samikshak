@@ -33,6 +33,21 @@ node bin/samikshak.js
 
 Then type `pr https://github.com/owner/repo/pull/123` to review a PR.
 
+### Commands
+
+| Command | Description |
+|---|---|
+| `pr <url>` | Review a GitHub pull request |
+| `commit <ref>` | Review a local commit (`commit abc123`, `commit HEAD~3`) |
+| `commit` | Show recent commits and pick one interactively |
+| `diff` | Review unstaged changes |
+| `diff --staged` | Review staged changes |
+| `diff <ref>` | Diff HEAD vs a ref (`diff main`) |
+| `diff <ref1>..<ref2>` | Diff between two refs |
+| `provider [name]` | Show or switch LLM provider |
+
+All review commands accept `--caveman` / `--cm` for ultra-concise reviews.
+
 ## Plan
 
 ### MVP
@@ -43,8 +58,10 @@ Then type `pr https://github.com/owner/repo/pull/123` to review a PR.
 
 ### Extra
 
-- [ ] commit diffs instead of PR links
+- [x] caveman mode
 - [ ] user can give some guidelines for the review
+- [x] local commit diffs instead of PR links
+- [x] local working tree / staged diff review
 - [ ] user can interact with code and ask questions about it
 - [ ] review depth (summary vs line-level feedback)
 - [ ] token cost tracking
