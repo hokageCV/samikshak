@@ -1,3 +1,5 @@
+import pc from 'picocolors'
+
 export const PR_URL_RE = /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/
 
 export function parsePrUrl(url) {
@@ -30,31 +32,56 @@ export async function fetchRawDiff(owner, repo, number) {
   return res.text()
 }
 
-function displayPr({ meta, files, diff }) {
+const STATE_COLORS = {
+  open: pc.green,
+  merged: pc.magenta,
+  closed: pc.red,
+}
+
+function colorState(state) {
+  const fn = STATE_COLORS[state]
+  return fn ? fn(state) : state
+}
+
+function formatDiff(diff) {
+  return diff.split('\n').map(line => {
+    if (line.startsWith('+') && !line.startsWith('+++')) return pc.green(line)
+    if (line.startsWith('-') && !line.startsWith('---')) return pc.red(line)
+    if (line.startsWith('@@')) return pc.cyan(line)
+    if (line.startsWith('diff --git')) return pc.bold(line)
+    if (line.startsWith('--- a/')) return pc.red(line)
+    if (line.startsWith('+++ b/')) return pc.green(line)
+    if (/^(index|new file|deleted file|rename|copy|similarity)/.test(line)) return pc.yellow(line)
+    if (line.startsWith(' ')) return pc.dim(line)
+    return line
+  }).join('\n')
+}
+
+export function displayPr({ meta, files, diff }) {
   const separator = '═'.repeat(47)
   const divider = '─'.repeat(47)
 
-  console.log(`\n${separator}`)
-  console.log(` PR #${meta.number} by ${meta.user.login} — ${meta.state}`)
-  console.log(`${separator}\n`)
-  console.log(` ${meta.title}`)
+  console.log(`\n${pc.bold(separator)}`)
+  console.log(` ${pc.bold(`PR #${meta.number}`)} by ${pc.cyan(meta.user.login)} — ${colorState(meta.state)}`)
+  console.log(`${pc.bold(separator)}\n`)
+  console.log(` ${pc.bold(meta.title)}`)
   console.log(`${divider}`)
   console.log(` ${meta.body || '(no description)'}`)
   console.log(`${divider}`)
 
   const totalAdditions = files.reduce((s, f) => s + f.additions, 0)
   const totalDeletions = files.reduce((s, f) => s + f.deletions, 0)
-  console.log(` ${files.length} files changed  (+${totalAdditions} / -${totalDeletions})\n`)
+  console.log(` ${pc.bold(files.length)} files changed  (${pc.green(`+${totalAdditions}`)} / ${pc.red(`-${totalDeletions}`)})\n`)
 
   for (const f of files) {
-    const statusIcon = f.status === 'added' ? '+' : f.status === 'removed' ? '-' : f.status === 'renamed' ? '→' : ' '
-    console.log(`   ${statusIcon} ${f.filename}  (+${f.additions} / -${f.deletions})`)
+    const statusIcon = f.status === 'added' ? pc.green('+') : f.status === 'removed' ? pc.red('-') : f.status === 'renamed' ? pc.yellow('→') : ' '
+    console.log(`   ${statusIcon} ${pc.yellow(f.filename)}  (${pc.green(`+${f.additions}`)} / ${pc.red(`-${f.deletions}`)})`)
   }
 
   console.log(`\n${divider}`)
-  console.log(' DIFF')
+  console.log(` ${pc.bold('DIFF')}`)
   console.log(`${divider}`)
-  console.log(`\n${diff}`)
+  console.log(`\n${formatDiff(diff)}`)
 }
 
 export async function handlePr(rl, url) {
