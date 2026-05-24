@@ -2,7 +2,7 @@ import pc from 'picocolors'
 import { marked } from 'marked'
 import Renderer from 'marked-terminal'
 import { getLLM } from '../llm.js'
-import { SYSTEM_PROMPT, buildReviewPrompt } from '../prompts/review.js'
+import { SYSTEM_PROMPT, CAVEMAN_ULTRA_PROMPT, buildReviewPrompt } from '../prompts/review.js'
 import { page } from '../pager.js'
 
 marked.setOptions({ renderer: new Renderer() })
@@ -94,32 +94,33 @@ export function formatPr({ meta, files, diff }) {
   return lines.join('\n')
 }
 
-export async function handlePr(rl, url) {
+export async function handlePr(rl, url, caveman) {
   if (url) {
-    await processUrl(url)
+    await processUrl(url, caveman)
     return
   }
   return new Promise((resolve) => {
     rl.question('Paste GitHub PR link: ', async (input) => {
-      await processUrl(input.trim())
+      await processUrl(input.trim(), caveman)
       resolve()
     })
   })
 }
 
-async function reviewWithLLM(meta, diff) {
+async function reviewWithLLM(meta, diff, caveman) {
   const llm = getLLM()
   const chat = llm.chat().withTemperature(0.3)
-  chat.system(SYSTEM_PROMPT)
+  chat.system(caveman ? CAVEMAN_ULTRA_PROMPT : SYSTEM_PROMPT)
   return chat.ask(buildReviewPrompt(meta, diff))
 }
 
-function formatReview(review) {
+function formatReview(review, caveman) {
   const divider = '═'.repeat(47)
-  return `\n${pc.bold(divider)}\n ${pc.bold('AI REVIEW')}\n${pc.bold(divider)}\n\n${marked(review.content)}`
+  const footer = caveman ? `\n${pc.dim('Caveman mode — https://skillsllm.com/skill/caveman')}` : ''
+  return `\n${pc.bold(divider)}\n ${pc.bold('AI REVIEW')}\n${pc.bold(divider)}\n\n${marked(review.content)}${footer}`
 }
 
-async function processUrl(url) {
+async function processUrl(url, caveman) {
   try {
     const { owner, repo, number } = parsePrUrl(url)
     const [data, diff] = await Promise.all([
@@ -129,8 +130,8 @@ async function processUrl(url) {
     let output = formatPr({ ...data, diff })
 
     console.log(`\n${pc.dim('Running AI review...')}`)
-    const review = await reviewWithLLM(data.meta, diff)
-    output += `\n${formatReview(review)}`
+    const review = await reviewWithLLM(data.meta, diff, caveman)
+    output += `\n${formatReview(review, caveman)}`
 
     await page(output)
   } catch (err) {
